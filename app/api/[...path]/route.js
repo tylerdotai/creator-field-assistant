@@ -5,40 +5,29 @@
 
 const WORKER_URL = "https://creator-field-assistant-api.tyler-delano.workers.dev";
 
-function getToken(request) {
-  const cookie = request.cookies.get("cfa_token")?.value;
-  if (cookie) return cookie;
-  return null;
-}
-
 async function proxy(request) {
-  const token = getToken(request);
   const url = new URL(request.url);
   const path = url.pathname.replace("/api/", "");
+  const targetUrl = `${WORKER_URL}/${path}${url.search}`;
 
-  const headers = {
-    "Content-Type": "application/json",
-  };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
+  const headers = {};
+  request.headers.forEach((value, key) => {
+    headers[key] = value;
+  });
 
-  // Clone request to read body — Next.js App Router consumes the stream
-  const cloned = request.clone();
+  // Read body once — this consumes the stream
   let body;
   try {
-    body = await cloned.text();
+    body = await request.text();
   } catch {
-    body = "";
+    body = undefined;
   }
 
   const options = {
     method: request.method,
     headers,
-    ...(body && { body }),
+    ...(body !== undefined && body !== "" && { body }),
   };
-
-  const targetUrl = `${WORKER_URL}/${path}${url.search}`;
 
   try {
     const response = await fetch(targetUrl, options);
