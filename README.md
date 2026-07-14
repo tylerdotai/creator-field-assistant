@@ -2,6 +2,7 @@
 
 > **Offline-first field production assistant for photographers, videographers, and content creators.**
 
+[![CI](https://img.shields.io/github/actions/workflow/status/tylerdotai/creator-field-assistant/ci.yml?style=flat-square&logo=github)](https://github.com/tylerdotai/creator-field-assistant/actions)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square&logo=next.js)](https://nextjs.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38bdf8?style=flat-square&logo=tailwindcss)](https://tailwindcss.com)
