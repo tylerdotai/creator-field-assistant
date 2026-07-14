@@ -15,6 +15,41 @@ interface SeedResult {
   source: string;
 }
 
+// ─── Static campsite seed ──────────────────────────────────────────────────────
+// Loads pre-curated real US campsite data when Overpass API is unavailable.
+async function loadStaticSeed(): Promise<SavedLocation[]> {
+  try {
+    const res = await fetch('/data/campsites-seed.json');
+    if (!res.ok) return [];
+
+    const items: { name: string; type: string; lat: number; lng: number; description: string }[] =
+      await res.json();
+
+    const written: SavedLocation[] = [];
+    for (const item of items) {
+      try {
+        const saved = await db.createLocation({
+          name: item.name,
+          lat: item.lat,
+          lng: item.lng,
+          type: 'campsite',
+          description: item.description || 'Curated campsite location',
+          photo_data_url: '',
+          project_id: '',
+          day_id: '',
+        } as Partial<Omit<SavedLocation, 'id' | 'created_at'>>);
+        written.push(saved);
+      } catch {
+        // ignore duplicate id conflicts
+      }
+    }
+    return written;
+  } catch (err) {
+    console.warn('[CFA] Static seed load failed:', err);
+    return [];
+  }
+}
+
 // ─── OSM Overpass seeding ───────────────────────────────────────────────────────
 // Queries OpenStreetMap for real campsite and photo spot data across the lower-48.
 // Returns raw SavedLocation-shaped objects (no project_id/day_id yet — the db layer
@@ -135,6 +170,10 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       const seeded = await seedOSMLocations();
       if (seeded.length > 0) {
         locations = seeded;
+      } else {
+        // All Overpass endpoints failed — fall back to static seed
+        console.warn('[CFA] OSM seed returned no results, loading static seed');
+        locations = await loadStaticSeed();
       }
     }
 
