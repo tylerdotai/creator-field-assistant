@@ -1,0 +1,35 @@
+{
+  "name": "creator-field-assistant",
+  "version": "1.0.0",
+  "description": "Offline-first field production assistant for creators",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@maplibre/maplibre-gl-geocoder": "^1.9.4",
+    "framer-motion": "^12.42.2",
+    "idb": "^8.0.3",
+    "lucide-react": "^1.24.0",
+    "maplibre-gl": "^5.24.0",
+    "next": "^14.2.35",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@types/maplibre-gl": "^1.13.2",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.5.2",
+    "eslint": "^8.57.0",
+    "eslint-config-next": "^14.2.0",
+    "postcss": "^8.5.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.4.0"
+  }
+}
