@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Folder, Trash2, Calendar } from "lucide-react";
+import { Plus, Folder, Trash2, Calendar, Settings } from "lucide-react";
 import { AppShell, PageHeader, Sheet } from "@/components/app-shell";
 import { Button, Input, Card, EmptyState, FAB } from "@/components/ui";
 import { useProjectStore } from "@/lib/stores/project-store";
@@ -35,7 +35,17 @@ export default function ProjectsPage() {
 
   return (
     <AppShell>
-      <PageHeader title="Shot Planner" />
+      <PageHeader
+        title="Shot Planner"
+        rightAction={
+          <button
+            onClick={() => router.push("/settings")}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", padding: "4px", display: "flex", alignItems: "center" }}
+          >
+            <Settings size={20} />
+          </button>
+        }
+      />
 
       <div style={{ padding: "16px" }}>
         {projects.length === 0 && !loading ? (

@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, MapPin, Camera, Trash2, Navigation, X,
-  Mountain, Building, Coffee, Tent, Star, Search
+  Mountain, Building, Coffee, Tent, Star, Search, Settings,
+  ListTodo, Backpack, ClipboardList
 } from "lucide-react";
 import { AppShell, PageHeader, Sheet } from "@/components/app-shell";
 import { Button, Input, Select, Card, Badge } from "@/components/ui";
@@ -73,6 +75,7 @@ export default function MapPage() {
   const [formLat, setFormLat] = useState("");
   const [formLng, setFormLng] = useState("");
   const [formNotes, setFormNotes] = useState("");
+  const router = useRouter();
 
   useEffect(() => {
     loadLocations();
@@ -292,6 +295,22 @@ export default function MapPage() {
             }}
           />
         </div>
+        <button
+          onClick={() => router.push("/settings")}
+          style={{
+            background: "none",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            padding: "8px",
+            cursor: "pointer",
+            color: "var(--text-secondary)",
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+          }}
+        >
+          <Settings size={16} />
+        </button>
         <button
           onClick={openCreateSheet}
           style={{
@@ -554,6 +573,49 @@ export default function MapPage() {
           />
         </div>
       )}
+
+      {/* Bottom Nav */}
+      <nav
+        style={{
+          height: "72px",
+          background: "rgba(20,20,20,0.95)",
+          backdropFilter: "blur(20px)",
+          borderTop: "1px solid var(--border)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-around",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+          zIndex: 40,
+        }}
+      >
+        {[
+          { href: "/projects", icon: ListTodo, label: "Shots" },
+          { href: "/gear", icon: Backpack, label: "Gear" },
+          { href: "/checklists", icon: ClipboardList, label: "Check" },
+          { href: "/map", icon: MapPin, label: "Map" },
+        ].map((item) => {
+          const Icon = item.icon;
+          const active = item.href === "/map";
+          return (
+            <button
+              key={item.href}
+              onClick={() => router.push(item.href)}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                display: "flex", flexDirection: "column", alignItems: "center",
+                gap: "4px", padding: "8px 20px",
+                color: active ? "var(--accent)" : "var(--text-secondary)",
+                transition: "color 200ms ease",
+              }}
+            >
+              <Icon size={22} strokeWidth={active ? 2.5 : 1.5} />
+              <span style={{ fontFamily: "var(--font-heading)", fontSize: "9px", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }

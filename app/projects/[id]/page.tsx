@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Plus, MapPin, Calendar, Trash2, Film, ChevronRight } from "lucide-react";
+import { Plus, MapPin, Calendar, Trash2, Film, ChevronRight, Settings } from "lucide-react";
 import { AppShell, PageHeader, Sheet } from "@/components/app-shell";
 import { Button, Input, Card, Badge, Divider, FAB } from "@/components/ui";
 import { useProjectStore } from "@/lib/stores/project-store";
@@ -55,7 +55,18 @@ export default function ProjectPage() {
   if (!project) {
     return (
       <AppShell>
-        <PageHeader title="Project" backHref="/projects" />
+        <PageHeader
+          title="Project"
+          backHref="/projects"
+          rightAction={
+            <button
+              onClick={() => router.push("/settings")}
+              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", padding: "4px", display: "flex", alignItems: "center" }}
+            >
+              <Settings size={20} />
+            </button>
+          }
+        />
         <div style={{ padding: "24px", textAlign: "center", color: "var(--text-secondary)" }}>
           Project not found
         </div>
@@ -65,7 +76,18 @@ export default function ProjectPage() {
 
   return (
     <AppShell>
-      <PageHeader title={project.name} backHref="/projects" />
+      <PageHeader
+        title={project.name}
+        backHref="/projects"
+        rightAction={
+          <button
+            onClick={() => router.push("/settings")}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", padding: "4px", display: "flex", alignItems: "center" }}
+          >
+            <Settings size={20} />
+          </button>
+        }
+      />
 
       <div style={{ padding: "16px" }}>
         <div

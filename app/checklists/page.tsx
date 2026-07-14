@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, CheckSquare, Square, RotateCcw, Trash2,
-  ChevronDown, ChevronUp, ListChecks
+  ChevronDown, ChevronUp, ListChecks, Settings
 } from "lucide-react";
 import { AppShell, PageHeader, Sheet } from "@/components/app-shell";
 import { Button, Input, Card, Badge, FAB } from "@/components/ui";
@@ -21,6 +22,8 @@ export default function ChecklistsPage() {
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [newItemText, setNewItemText] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const router = useRouter();
 
   useEffect(() => { loadChecklists(); }, [loadChecklists]);
 
@@ -52,22 +55,34 @@ export default function ChecklistsPage() {
       <PageHeader
         title="Checklists"
         rightAction={
-          <button
-            onClick={() => setSheetOpen(true)}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "var(--accent)",
-              fontFamily: "var(--font-heading)",
-              fontSize: "12px",
-              fontWeight: 700,
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-            }}
-          >
-            + New
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <button
+              onClick={() => router.push("/settings")}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                color: "var(--text-secondary)", padding: "6px", display: "flex", alignItems: "center",
+              }}
+            >
+              <Settings size={18} />
+            </button>
+            <button
+              onClick={() => setSheetOpen(true)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--accent)",
+                fontFamily: "var(--font-heading)",
+                fontSize: "12px",
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                padding: "6px 8px",
+              }}
+            >
+              + New
+            </button>
+          </div>
         }
       />
 

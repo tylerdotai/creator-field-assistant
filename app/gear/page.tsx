@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Package, Trash2, ChevronDown, ChevronUp, CheckSquare,
-  Square, Weight, Backpack
+  Square, Weight, Backpack, Settings
 } from "lucide-react";
 import { AppShell, PageHeader, Sheet } from "@/components/app-shell";
 import { Button, Input, Select, Card, Badge, FAB } from "@/components/ui";
@@ -59,6 +60,7 @@ export default function GearPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
   const [filterCat, setFilterCat] = useState<string>("all");
+  const router = useRouter();
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -130,22 +132,34 @@ export default function GearPage() {
       <PageHeader
         title="Gear"
         rightAction={
-          <button
-            onClick={openCreate}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              color: "var(--accent)",
-              fontFamily: "var(--font-heading)",
-              fontSize: "12px",
-              fontWeight: 700,
-              letterSpacing: "0.04em",
-              textTransform: "uppercase",
-            }}
-          >
-            + Add
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+            <button
+              onClick={() => router.push("/settings")}
+              style={{
+                background: "none", border: "none", cursor: "pointer",
+                color: "var(--text-secondary)", padding: "6px", display: "flex", alignItems: "center",
+              }}
+            >
+              <Settings size={18} />
+            </button>
+            <button
+              onClick={openCreate}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                color: "var(--accent)",
+                fontFamily: "var(--font-heading)",
+                fontSize: "12px",
+                fontWeight: 700,
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
+                padding: "6px 8px",
+              }}
+            >
+              + Add
+            </button>
+          </div>
         }
       />
 

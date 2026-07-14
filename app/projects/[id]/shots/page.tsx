@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { AnimatePresence } from "framer-motion";
-import { Plus, Filter } from "lucide-react";
+import { Plus, Filter, Settings } from "lucide-react";
 import { AppShell, PageHeader, Sheet } from "@/components/app-shell";
 import { Button, Input, Select, Textarea, FAB } from "@/components/ui";
 import { ShotCard } from "@/components/shot-card";
@@ -55,6 +55,7 @@ function ShotListContent() {
     createShot, updateShot, deleteShot, toggleShotComplete,
   } = useProjectStore();
   const project = projects.find((p) => p.id === projectId);
+  const router = useRouter();
 
   const [selectedDayId, setSelectedDayId] = useState<string | null>(initialDayId);
   const [filter, setFilter] = useState("all");
@@ -132,6 +133,14 @@ function ShotListContent() {
       <PageHeader
         title={currentDay?.location_name ?? "Shots"}
         backHref={`/projects/${projectId}`}
+        rightAction={
+          <button
+            onClick={() => router.push("/settings")}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", padding: "4px", display: "flex", alignItems: "center" }}
+          >
+            <Settings size={20} />
+          </button>
+        }
       />
 
       {/* Day Tabs */}
