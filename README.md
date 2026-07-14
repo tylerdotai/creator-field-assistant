@@ -8,7 +8,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38bdf8?style=flat-square&logo=tailwindcss)](https://tailwindcss.com)
 [![PWA](https://img.shields.io/badge/PWA-Installable-00d2ff?style=flat-square&logo=pwa)](https://web.dev/pwa)
 [![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?style=flat-square&logo=vercel)](https://vercel.com)
-[![Cloudflare](https://img.shields.io/badge/Backend-Cloudflare Workers-orange?style=flat-square&logo=cloudflare)](https://workers.cloudflare.com)
+[![Cloudflare](https://img.shields.io/badge/Backend-Cloudflare%20Workers-orange?style=flat-square&logo=cloudflare)](https://workers.cloudflare.com)
 
 **Live:** [creator-field-assistant.vercel.app](https://creator-field-assistant.vercel.app)
 
