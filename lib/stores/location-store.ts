@@ -22,38 +22,11 @@ interface SeedResult {
 async function seedOSMLocations(): Promise<SavedLocation[]> {
   const results: SeedResult[] = [];
 
-  // Overpass QL — search for tourism=camppitch and natural=peak/valley viewpoints
-  // across the continental US bounding box
-  const overpassQuery = `
-[out:json][timeout:30];
-(
-  // USGS-named scenic viewpoints and photography hotspots
-  node["natural"="peak"]["name"](31.0,-125.0,49.5,-93.0);
-  node["natural"="cliff"]["name"](31.0,-125.0,49.5,-93.0);
-  node["natural"="viewpoint"]["name"](31.0,-125.0,49.5,-93.0);
-  node["tourism"="viewpoint"]["name"](31.0,-125.0,49.5,-93.0);
-  node["tourism"="camp_pitch"]["name"](31.0,-125.0,49.5,-93.0);
-  node["tourism"="campsite"]["name"](31.0,-125.0,49.5,-93.0);
-  node["leisure"="camp_pitch"]["name"](31.0,-125.0,49.5,-93.0);
-  node["leisure"="campsite"]["name"](31.0,-125.0,49.5,-93.0);
-  node["site"="camp"](31.0,-125.0,49.5,-93.0);
-  way["natural"="peak"]["name"](31.0,-125.0,49.5,-93.0);
-  way["natural"="cliff"]["name"](31.0,-125.0,49.5,-93.0);
-  way["tourism"="viewpoint"]["name"](31.0,-125.0,49.5,-93.0);
-  way["tourism"="campsite"]["name"](31.0,-125.0,49.5,-93.0);
-  way["leisure"="campsite"]["name"](31.0,-125.0,49.5,-93.0);
-);
-out center;
-`.trim();
+  // US continental bounding box
+  const bbox = "-125,24,-66,50";
 
   try {
-    const res = await fetch("https://overpass-api.de/api/interpreter", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `data=${encodeURIComponent(overpassQuery)}`,
-    });
-
-    if (!res.ok) throw new Error(`Overpass ${res.status}`);
+    const res = await fetch(`/api/osm?bbox=${bbox}`);
 
     const json = await res.json();
     const elements = json.elements ?? [];
@@ -230,7 +203,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   locationsByType: () => {
     const { locations } = get();
     const types: SavedLocation["type"][] = [
-      "campsite", "photo_spot", "accommodation", "food", "POI", "other",
+      "campsite", "photo_spot", "accommodation", "POI", "other",
     ];
     const result = {} as Record<SavedLocation["type"], SavedLocation[]>;
     for (const type of types) {

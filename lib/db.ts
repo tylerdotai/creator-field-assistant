@@ -69,7 +69,7 @@ export interface SavedLocation {
   name: string;
   lat: number;
   lng: number;
-  type: "campsite" | "photo_spot" | "accommodation" | "food" | "POI" | "other";
+  type: "campsite" | "photo_spot" | "accommodation" | "POI" | "other";
   description: string;
   photo_data_url: string;
   project_id: string;

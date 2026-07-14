@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, MapPin, Camera, Trash2, Navigation, X,
-  Mountain, Building, Coffee, Tent, Star, Search, Settings,
+  Mountain, Building, Tent, Star, Search, Settings,
   ListTodo, Backpack, ClipboardList, Crosshair
 } from "lucide-react";
 import { AppShell, PageHeader, Sheet } from "@/components/app-shell";
@@ -17,7 +17,6 @@ const TYPE_ICONS: Record<SavedLocation["type"], React.ReactNode> = {
   campsite: <Tent size={12} />,
   photo_spot: <Camera size={12} />,
   accommodation: <Building size={12} />,
-  food: <Coffee size={12} />,
   POI: <Star size={12} />,
   other: <MapPin size={12} />,
 };
@@ -29,7 +28,6 @@ const TYPE_BADGE_VARIANT = (
     campsite: "accent",
     photo_spot: "success",
     accommodation: "warning",
-    food: "outline",
     POI: "outline",
     other: "outline",
   };
@@ -40,7 +38,6 @@ const TYPE_OPTIONS = [
   { value: "campsite", label: "Campsite" },
   { value: "photo_spot", label: "Photo Spot" },
   { value: "accommodation", label: "Accommodation" },
-  { value: "food", label: "Food / Drink" },
   { value: "POI", label: "Point of Interest" },
   { value: "other", label: "Other" },
 ];
@@ -50,7 +47,6 @@ const FILTER_OPTIONS = [
   { value: "campsite", label: "Campsites" },
   { value: "photo_spot", label: "Photo Spots" },
   { value: "accommodation", label: "Stay" },
-  { value: "food", label: "Food" },
   { value: "POI", label: "POI" },
 ];
 
@@ -76,6 +72,9 @@ export default function MapPage() {
   const [formLng, setFormLng] = useState("");
   const [formNotes, setFormNotes] = useState("");
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const markersRef = useRef<unknown[]>([]);
+  const lastFetchRef = useRef(0);
+  const [loadingNearby, setLoadingNearby] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -120,6 +119,10 @@ export default function MapPage() {
 
       (map as { on: (event: string, cb: () => void) => void }).on("load", () => {
         setMapReady(true);
+        // Seed initial spots
+        fetchNearbySpots();
+        // Listen for map moves
+        (map as unknown as { on: (event: string, cb: () => void) => void }).on("moveend", fetchNearbySpots);
       });
 
       // Long-press on map to drop a pin
@@ -201,15 +204,22 @@ export default function MapPage() {
     const addMarkers = async () => {
       const maplibregl = (await import("maplibre-gl")).default;
 
-      // Clear existing markers
-      const existingMarkers = (map as unknown as { _markers?: unknown[] })._markers || [];
-      for (const m of existingMarkers) {
+      // Remove existing markers via ref
+      for (const m of markersRef.current) {
         if (typeof (m as { remove: () => void }).remove === "function") {
           (m as { remove: () => void }).remove();
         }
       }
+      markersRef.current = [];
 
-      const newMarkers: unknown[] = [];
+      const typeColor: Record<string, string> = {
+        campsite: "var(--accent, #00d2ff)",
+        photo_spot: "#22c55e",
+        accommodation: "#f59e0b",
+        other: "#94a3b8",
+        POI: "#94a3b8",
+        food: "#94a3b8",
+      };
 
       locations
         .filter((loc) => filter === "all" || loc.type === filter)
@@ -217,10 +227,11 @@ export default function MapPage() {
           if (!loc.lat || !loc.lng) return;
 
           const el = document.createElement("div");
+          const color = typeColor[loc.type] ?? "#94a3b8";
           el.style.cssText = `
             width: 32px; height: 32px;
-            background: var(--accent, #00d2ff);
-            border: 2px solid #0a0a0a;
+            background: ${color};
+            border: 2px solid #0a0a0b;
             border-radius: 50% 50% 50% 0;
             transform: rotate(-45deg);
             cursor: pointer;
@@ -235,14 +246,80 @@ export default function MapPage() {
             setSelectedLocation(loc);
           });
 
-          newMarkers.push(marker);
+          markersRef.current.push(marker);
         });
-
-      (map as unknown as { _markers: unknown[] })._markers = newMarkers;
     };
 
     addMarkers();
+
+    return () => {
+      for (const m of markersRef.current) {
+        if (typeof (m as { remove: () => void }).remove === "function") {
+          (m as { remove: () => void }).remove();
+        }
+      }
+      markersRef.current = [];
+    };
   }, [locations, filter, mapReady]);
+
+  // Auto-load nearby spots on map pan
+  const fetchNearbySpots = async () => {
+    if (!mapRef.current) return;
+    const now = Date.now();
+    if (now - lastFetchRef.current < 30000) return; // debounce 30s
+    lastFetchRef.current = now;
+
+    setLoadingNearby(true);
+    try {
+      const bounds = mapRef.current.getBounds();
+      const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
+      const res = await fetch(`/api/osm?bbox=${bbox}`);
+      const data = await res.json();
+      const elements: Array<{
+        tags?: Record<string, string>;
+        lat?: number;
+        lon?: number;
+        center?: { lat: number; lon: number };
+      }> = data.elements || [];
+
+      for (const el of elements) {
+        const tags = el.tags || {};
+        if (!tags.name) continue;
+
+        let lat: number, lng: number;
+        if (el.lat !== undefined) { lat = el.lat; lng = el.lon ?? 0; }
+        else if (el.center) { lat = el.center.lat; lng = el.center.lon; }
+        else continue;
+
+        // Skip if already exists (same name + ~100m)
+        const existing = locations.find((l) =>
+          l.name === tags.name &&
+          Math.abs((l.lat ?? 0) - lat) < 0.001 &&
+          Math.abs((l.lng ?? 0) - lng) < 0.001
+        );
+        if (existing) continue;
+
+        // Determine type
+        let type: SavedLocation["type"] = "other";
+        if (tags.tourism === "camp_site" || tags.leisure === "campsite") type = "campsite";
+        else if (tags.tourism === "viewpoint" || tags.natural === "peak") type = "photo_spot";
+
+        await createLocation({
+          name: tags.name,
+          type,
+          lat,
+          lng,
+          description: [tags.description, tags.note].filter(Boolean).join(" — ") || undefined,
+        });
+      }
+
+      await loadLocations();
+    } catch {
+      // Silent fail
+    } finally {
+      setLoadingNearby(false);
+    }
+  };
 
   const filteredLocations = locations.filter((loc) => {
     if (filter !== "all" && loc.type !== filter) return false;
@@ -430,6 +507,7 @@ export default function MapPage() {
           background: "var(--bg)",
           borderBottom: "1px solid var(--border)",
           scrollbarWidth: "none",
+          alignItems: "center",
         }}
       >
         {FILTER_OPTIONS.map((opt) => (
@@ -455,6 +533,18 @@ export default function MapPage() {
             {opt.label}
           </button>
         ))}
+        {loadingNearby && (
+          <div
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "var(--accent)",
+              flexShrink: 0,
+              animation: "pulse 1s infinite",
+            }}
+          />
+        )}
       </div>
 
       {/* Map */}
