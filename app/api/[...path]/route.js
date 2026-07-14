@@ -7,15 +7,17 @@ const WORKER_URL = "https://creator-field-assistant-api.tyler-delano.workers.dev
 
 async function proxy(request) {
   const url = new URL(request.url);
-  const path = url.pathname.replace("/api/", "");
-  const targetUrl = `${WORKER_URL}/${path}${url.search}`;
+  const path = url.pathname; // keep full path including /api
+  const targetUrl = `${WORKER_URL}${path}${url.search}`;
+
+  // Debug: log what we're proxying
+  console.log("PROXY:", request.method, url.pathname, "->", targetUrl);
 
   const headers = {};
   request.headers.forEach((value, key) => {
     headers[key] = value;
   });
 
-  // Read body once — this consumes the stream
   let body;
   try {
     body = await request.text();
