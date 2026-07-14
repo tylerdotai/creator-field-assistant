@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Camera, Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 
 export default function LoginPage() {
@@ -55,21 +55,17 @@ export default function LoginPage() {
           marginBottom: "40px",
         }}
       >
-        <div
+        <img
+          src="/icons/icon-512.png"
+          alt="Creator Field Assistant"
           style={{
-            width: "72px",
-            height: "72px",
-            borderRadius: "16px",
-            background: "rgba(0, 210, 255, 0.12)",
-            border: "1px solid rgba(0, 210, 255, 0.2)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            width: "80px",
+            height: "80px",
+            borderRadius: "18px",
+            objectFit: "cover",
             marginBottom: "20px",
           }}
-        >
-          <Camera size={32} style={{ color: "var(--accent)" }} />
-        </div>
+        />
         <h1
           style={{
             fontFamily: "var(--font-heading)",
