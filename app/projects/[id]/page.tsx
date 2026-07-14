@@ -159,11 +159,10 @@ export default function ProjectPage() {
                   </div>
 
                   <button
-                    onClick={(e) => { e.stopPropagation(); }}
-                    onClickCapture={(e) => { e.stopPropagation(); }}
+                    onClick={(e) => { e.stopPropagation(); deleteDay(day.id); }}
                     style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", opacity: 0.4, padding: "4px" }}
                   >
-                    <ChevronRight size={18} />
+                    <Trash2 size={15} />
                   </button>
                 </Card>
               </motion.div>

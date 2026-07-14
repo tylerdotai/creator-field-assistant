@@ -11,12 +11,13 @@ import {
   Settings,
   ChevronLeft,
   WifiOff,
+  ClipboardList,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/projects", icon: ListTodo, label: "Shots" },
   { href: "/gear", icon: Backpack, label: "Gear" },
-  { href: "/checklists", icon: ListTodo, label: "Check" },
+  { href: "/checklists", icon: ClipboardList, label: "Check" },
   { href: "/map", icon: Map, label: "Map" },
 ];
 

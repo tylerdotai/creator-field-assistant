@@ -3,10 +3,17 @@
 import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { api } from "@/lib/api-client";
 
-const AuthContext = createContext(null);
+const AuthContext = createContext<{
+  user: { email: string } | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<unknown>;
+  register: (email: string, password: string) => Promise<unknown>;
+  logout: () => void;
+  isLoggedIn: boolean;
+} | null>(null);
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<{ email: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   const checkAuth = useCallback(async () => {
@@ -29,14 +36,14 @@ export function AuthProvider({ children }) {
     checkAuth();
   }, [checkAuth]);
 
-  const login = async (email, password) => {
+  const login = async (email: string, password: string) => {
     const data = await api.auth.login(email, password);
     localStorage.setItem("cfa_email", email);
     setUser({ email });
     return data;
   };
 
-  const register = async (email, password) => {
+  const register = async (email: string, password: string) => {
     const data = await api.auth.register(email, password);
     localStorage.setItem("cfa_email", email);
     setUser({ email });
@@ -56,7 +63,14 @@ export function AuthProvider({ children }) {
   );
 }
 
-export function useAuth() {
+export function useAuth(): {
+  user: { email: string } | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<unknown>;
+  register: (email: string, password: string) => Promise<unknown>;
+  logout: () => void;
+  isLoggedIn: boolean;
+} {
   const ctx = useContext(AuthContext);
   // During SSR prerender, context is null — return a no-op fallback
   if (!ctx) {

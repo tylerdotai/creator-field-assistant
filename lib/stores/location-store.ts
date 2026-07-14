@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import * as db from "@/lib/db";
 import type { SavedLocation, LocationPhoto } from "@/lib/db";
+import { api } from "@/lib/api-client";
 
 interface LocationState {
   locations: SavedLocation[];
@@ -35,6 +36,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
   createLocation: async (data) => {
     const location = await db.createLocation(data);
     set((s) => ({ locations: [...s.locations, location] }));
+    try { await api.locations.create(data); } catch { /* ignore */ }
     return location;
   },
 
@@ -43,6 +45,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
     set((s) => ({
       locations: s.locations.map((l) => (l.id === id ? { ...l, ...data } : l)),
     }));
+    try { await api.locations.update(id, data); } catch { /* ignore */ }
   },
 
   deleteLocation: async (id) => {
@@ -51,6 +54,7 @@ export const useLocationStore = create<LocationState>((set, get) => ({
       const { [id]: _, ...restPhotos } = s.photos;
       return { locations: s.locations.filter((l) => l.id !== id), photos: restPhotos };
     });
+    try { await api.locations.delete(id); } catch { /* ignore */ }
   },
 
   loadPhotos: async (locationId) => {
@@ -66,6 +70,13 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         [locationId]: [...(s.photos[locationId] ?? []), photo],
       },
     }));
+    try {
+      await fetch(`/api/locations/${locationId}/photos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ data_url: dataUrl, caption: caption ?? "" }),
+      });
+    } catch { /* ignore */ }
   },
 
   deletePhoto: async (photoId, locationId) => {
@@ -76,6 +87,9 @@ export const useLocationStore = create<LocationState>((set, get) => ({
         [locationId]: (s.photos[locationId] ?? []).filter((p) => p.id !== photoId),
       },
     }));
+    try {
+      await fetch(`/api/locations/${locationId}/photos/${photoId}`, { method: "DELETE" });
+    } catch { /* ignore */ }
   },
 
   locationsByType: () => {

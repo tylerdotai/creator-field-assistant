@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import * as db from "@/lib/db";
+import { api } from "@/lib/api-client";
 import type { GearItem, KitPreset } from "@/lib/db";
 
 interface GearState {
@@ -45,6 +46,7 @@ export const useGearStore = create<GearState>((set, get) => ({
   createItem: async (data) => {
     const item = await db.createGearItem(data);
     set((s) => ({ items: [...s.items, item] }));
+    try { await api.gear.create(data); } catch { /* ignore */ }
     return item;
   },
 
@@ -53,22 +55,26 @@ export const useGearStore = create<GearState>((set, get) => ({
     set((s) => ({
       items: s.items.map((i) => (i.id === id ? { ...i, ...data } : i)),
     }));
+    try { await api.gear.update(id, data); } catch { /* ignore */ }
   },
 
   deleteItem: async (id) => {
     await db.deleteGearItem(id);
     set((s) => ({ items: s.items.filter((i) => i.id !== id) }));
+    try { await api.gear.delete(id); } catch { /* ignore */ }
   },
 
   togglePacked: async (id) => {
     const item = get().items.find((i) => i.id === id);
     if (!item) return;
-    await db.updateGearItem(id, { is_packed: !item.is_packed });
+    const newPackedState = !item.is_packed;
+    await db.updateGearItem(id, { is_packed: newPackedState });
     set((s) => ({
       items: s.items.map((i) =>
-        i.id === id ? { ...i, is_packed: !i.is_packed } : i
+        i.id === id ? { ...i, is_packed: newPackedState } : i
       ),
     }));
+    try { await api.gear.update(id, { is_packed: newPackedState }); } catch { /* ignore */ }
   },
 
   createPreset: async (name, itemIds) => {
@@ -91,6 +97,9 @@ export const useGearStore = create<GearState>((set, get) => ({
         preset.item_ids.includes(i.id) ? { ...i, is_packed: packed } : i
       ),
     }));
+    for (const itemId of preset.item_ids) {
+      try { await api.gear.update(itemId, { is_packed: packed }); } catch { /* ignore */ }
+    }
   },
 
   packedWeight: () => {

@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import * as db from "@/lib/db";
 import type { Project, Day, Shot } from "@/lib/db";
+import { api } from "@/lib/api-client";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -50,6 +51,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   createProject: async (name) => {
     const project = await db.createProject(name);
     set((s) => ({ projects: [project, ...s.projects] }));
+    try { await api.projects.create(name); } catch { /* IndexedDB wins */ }
     return project;
   },
 
@@ -59,6 +61,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       projects: s.projects.filter((p) => p.id !== id),
       currentProjectId: s.currentProjectId === id ? null : s.currentProjectId,
     }));
+    try { await api.projects.delete(id); } catch { /* IndexedDB wins */ }
   },
 
   setCurrentProject: (id) => set({ currentProjectId: id }),
@@ -71,6 +74,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   createDay: async (projectId, locationName, date) => {
     const day = await db.createDay(projectId, locationName, date);
     set((s) => ({ days: [...s.days, day] }));
+    try { await api.days.create(projectId, { location_name: locationName, date }); } catch { /* IndexedDB wins */ }
     return day;
   },
 
@@ -79,6 +83,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set((s) => ({
       days: s.days.map((d) => (d.id === id ? { ...d, ...data } : d)),
     }));
+    try { await api.days.update(id, data); } catch { /* IndexedDB wins */ }
   },
 
   deleteDay: async (id) => {
@@ -87,6 +92,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const { [id]: _, ...rest } = s.shots;
       return { days: s.days.filter((d) => d.id !== id), shots: rest };
     });
+    try { await api.days.delete(id); } catch { /* IndexedDB wins */ }
   },
 
   loadShots: async (dayId) => {
@@ -102,6 +108,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         [dayId]: [...(s.shots[dayId] ?? []), shot],
       },
     }));
+    try { await api.shots.create(dayId, data ?? {}); } catch { /* IndexedDB wins */ }
     return shot;
   },
 
@@ -116,6 +123,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }
       return { shots: newShots };
     });
+    try { await api.shots.update(id, data); } catch { /* IndexedDB wins */ }
   },
 
   deleteShot: async (id) => {
@@ -127,6 +135,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }
       return { shots: newShots };
     });
+    try { await api.shots.delete(id); } catch { /* IndexedDB wins */ }
   },
 
   toggleShotComplete: async (id) => {

@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import * as db from "@/lib/db";
+import { api } from "@/lib/api-client";
 import type { Checklist, ChecklistItem } from "@/lib/db";
 
 interface ChecklistState {
@@ -29,12 +30,24 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
   loadChecklists: async () => {
     set({ loading: true });
     const checklists = await db.getAllChecklists();
+    if (checklists.length === 0) {
+      // Seed defaults on first launch
+      await Promise.all([
+        db.createChecklist("Pre-Production"),
+        db.createChecklist("Production"),
+        db.createChecklist("Post-Production"),
+      ]);
+      const seeded = await db.getAllChecklists();
+      set({ checklists: seeded, loading: false });
+      return;
+    }
     set({ checklists, loading: false });
   },
 
   createChecklist: async (name, projectId) => {
     const checklist = await db.createChecklist(name, projectId);
     set((s) => ({ checklists: [...s.checklists, checklist] }));
+    try { await api.checklists.create(name, projectId); } catch { /* ignore */ }
     return checklist;
   },
 
@@ -44,6 +57,7 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
       const { [id]: _, ...rest } = s.items;
       return { checklists: s.checklists.filter((c) => c.id !== id), items: rest };
     });
+    try { await api.checklists.delete(id); } catch { /* ignore */ }
   },
 
   loadItems: async (checklistId) => {
@@ -59,6 +73,7 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
         [checklistId]: [...(s.items[checklistId] ?? []), item],
       },
     }));
+    try { await api.checklistItems.create(checklistId, text); } catch { /* ignore */ }
   },
 
   toggleItem: async (itemId) => {
@@ -70,7 +85,8 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
       if (target) { checklistId = cId; break; }
     }
     if (!target || !checklistId) return;
-    const updated = await db.updateChecklistItem(itemId, { checked: !target.checked });
+    const newCheckedState = !target.checked;
+    const updated = await db.updateChecklistItem(itemId, { checked: newCheckedState });
     if (updated) {
       set((s) => ({
         items: {
@@ -81,6 +97,7 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
         },
       }));
     }
+    try { await api.checklistItems.update(itemId, { checked: newCheckedState }); } catch { /* ignore */ }
   },
 
   deleteItem: async (itemId) => {
@@ -92,19 +109,24 @@ export const useChecklistStore = create<ChecklistState>((set, get) => ({
       }
       return { items: newItems };
     });
+    try { await api.checklistItems.delete(itemId); } catch { /* ignore */ }
   },
 
   resetChecklist: async (checklistId) => {
     await db.resetChecklist(checklistId);
+    const currentItems = get().items[checklistId] ?? [];
     set((s) => ({
       items: {
         ...s.items,
-        [checklistId]: (s.items[checklistId] ?? []).map((i) => ({
+        [checklistId]: currentItems.map((i) => ({
           ...i,
           checked: false,
         })),
       },
     }));
+    for (const item of currentItems) {
+      try { await api.checklistItems.update(item.id, { checked: false }); } catch { /* ignore */ }
+    }
   },
 
   progress: (checklistId) => {
