@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, MapPin, Camera, Trash2, Navigation, X,
   Mountain, Building, Coffee, Tent, Star, Search, Settings,
-  ListTodo, Backpack, ClipboardList
+  ListTodo, Backpack, ClipboardList, Crosshair
 } from "lucide-react";
 import { AppShell, PageHeader, Sheet } from "@/components/app-shell";
 import { Button, Input, Select, Card, Badge } from "@/components/ui";
@@ -75,6 +75,7 @@ export default function MapPage() {
   const [formLat, setFormLat] = useState("");
   const [formLng, setFormLng] = useState("");
   const [formNotes, setFormNotes] = useState("");
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -119,6 +120,65 @@ export default function MapPage() {
 
       (map as { on: (event: string, cb: () => void) => void }).on("load", () => {
         setMapReady(true);
+      });
+
+      // Long-press on map to drop a pin
+      let startPos: { x: number; y: number } | null = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (map as any).on("touchstart", (e: { touches?: { clientX: number; clientY: number }[] }) => {
+        if (!e.touches || e.touches.length !== 1) return;
+        startPos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        longPressTimer.current = setTimeout(() => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const lngLat = (map as any).unproject([startPos!.x, startPos!.y]);
+          setFormLat(String(lngLat.lat.toFixed(6)));
+          setFormLng(String(lngLat.lng.toFixed(6)));
+          setFormName("");
+          setFormType("photo_spot");
+          setFormNotes("");
+          setSelectedLocation(null);
+          setSheetOpen(true);
+          startPos = null;
+        }, 600);
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (map as any).on("touchmove", () => {
+        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+        startPos = null;
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (map as any).on("touchend", () => {
+        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+        startPos = null;
+      });
+      // Mouse long-click (desktop)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (map as any).on("mousedown", (e: { point?: { x: number; y: number }; button?: number }) => {
+        if (e.button !== 0) return;
+        if (!e.point) return;
+        startPos = { x: e.point.x, y: e.point.y };
+        longPressTimer.current = setTimeout(() => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const lngLat = (map as any).unproject([startPos!.x, startPos!.y]);
+          setFormLat(String(lngLat.lat.toFixed(6)));
+          setFormLng(String(lngLat.lng.toFixed(6)));
+          setFormName("");
+          setFormType("photo_spot");
+          setFormNotes("");
+          setSelectedLocation(null);
+          setSheetOpen(true);
+          startPos = null;
+        }, 600);
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (map as any).on("mousemove", () => {
+        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+        startPos = null;
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (map as any).on("mouseup", () => {
+        if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+        startPos = null;
       });
     };
 
@@ -310,6 +370,34 @@ export default function MapPage() {
           }}
         >
           <Settings size={16} />
+        </button>
+        <button
+          onClick={() => {
+            if (!navigator.geolocation) {
+              alert("Geolocation not supported by your browser.");
+              return;
+            }
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                const map = mapRef.current as { flyTo: (opts: object) => void };
+                map.flyTo({ center: [pos.coords.longitude, pos.coords.latitude], zoom: 14, essential: true });
+              },
+              () => alert("Could not get your location. Check location permissions.")
+            );
+          }}
+          style={{
+            background: "none",
+            border: "1px solid var(--border)",
+            borderRadius: "8px",
+            padding: "8px",
+            cursor: "pointer",
+            color: "var(--text-secondary)",
+            display: "flex",
+            alignItems: "center",
+            flexShrink: 0,
+          }}
+        >
+          <Crosshair size={16} />
         </button>
         <button
           onClick={openCreateSheet}
