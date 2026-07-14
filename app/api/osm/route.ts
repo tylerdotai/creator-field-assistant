@@ -6,6 +6,13 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.osm.ch/api/interpreter',
 ];
 
+const OVERPASS_HEADERS = {
+  'Content-Type': 'application/x-www-form-urlencoded',
+  'Accept': 'application/json',
+  'User-Agent': 'CreatorFieldAssistant/1.0 (contact@tyler.delano; https://creator-field-assistant.vercel.app)',
+  'Referer': 'https://creator-field-assistant.vercel.app',
+};
+
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const bbox = searchParams.get('bbox'); // 'minLng,minLat,maxLng,maxLat'
@@ -29,7 +36,7 @@ out skel qt;`;
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        headers: OVERPASS_HEADERS,
         body: `data=${encodeURIComponent(overpassQuery)}`,
         signal: AbortSignal.timeout(35000),
       });
