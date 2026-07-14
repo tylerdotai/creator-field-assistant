@@ -5,39 +5,100 @@ import * as db from "@/lib/db";
 import type { SavedLocation, LocationPhoto } from "@/lib/db";
 import { api } from "@/lib/api-client";
 
-interface SeedResult {
-  id: string;
-  name: string;
-  lat: number;
-  lng: number;
-  type: "campsite" | "photo_spot";
-  description: string;
-  source: string;
-}
-
-// ─── Static campsite seed ──────────────────────────────────────────────────────
-// Loads pre-curated real US campsite data when Overpass API is unavailable.
-async function loadStaticSeed(): Promise<SavedLocation[]> {
+// ─── USFS ArcGIS seed ───────────────────────────────────────────────────────────
+// Fetches real USFS recreation sites via the /api/campsites server route which
+// queries the USDA Forest Service ArcGIS FeatureService.
+// Falls back to a small static seed if the API is unavailable.
+async function seedUSFSLocations(): Promise<SavedLocation[]> {
   try {
-    const res = await fetch('/data/campsites-seed.json');
-    if (!res.ok) return [];
+    // Continental US bounding box
+    const res = await fetch("/api/campsites?bbox=-125,24.5,-66.9,49.5", {
+      signal: AbortSignal.timeout(30000),
+    });
 
-    const items: { name: string; type: string; lat: number; lng: number; description: string }[] =
-      await res.json();
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const json = await res.json();
+
+    // If the server couldn't reach USFS, fall through to static seed
+    if (json.fallback) throw new Error("USFS API returned fallback");
+
+    const rawLocations: Array<{
+      name: string;
+      lat: number;
+      lng: number;
+      type: "campsite" | "photo_spot" | "accommodation" | "other";
+      description: string;
+      location: string;
+      url: string;
+      directions: string;
+      subtype: string;
+      activities: string;
+      fee: string;
+      fee_detail: string;
+      water: string;
+      restroom: string;
+      elevation: string;
+      season: string;
+      hours: string;
+      restrictions: string;
+      towns: string;
+    }> = json.locations ?? [];
 
     const written: SavedLocation[] = [];
-    for (const item of items) {
+    for (const item of rawLocations.slice(0, 500)) {
       try {
         const saved = await db.createLocation({
           name: item.name,
           lat: item.lat,
           lng: item.lng,
-          type: 'campsite',
-          description: item.description || 'Curated campsite location',
-          photo_data_url: '',
-          project_id: '',
-          day_id: '',
-        } as Partial<Omit<SavedLocation, 'id' | 'created_at'>>);
+          type: item.type,
+          description: item.description || `${item.subtype} — ${item.location}`,
+          photo_data_url: "",
+          project_id: "",
+          day_id: "",
+        } as Partial<Omit<SavedLocation, "id" | "created_at">>);
+        written.push(saved);
+      } catch {
+        // ignore duplicate / write errors
+      }
+    }
+    return written;
+  } catch (err) {
+    console.warn("[CFA] USFS seed failed, using static fallback:", err);
+    return loadStaticSeed();
+  }
+}
+
+// ─── Static campsite seed ────────────────────────────────────────────────────────
+// Minimal fallback seed — used only when /api/campsites is unavailable.
+async function loadStaticSeed(): Promise<SavedLocation[]> {
+  try {
+    const res = await fetch("/data/campsites-seed.json");
+    if (!res.ok) return [];
+
+    const items: {
+      name: string;
+      type: string;
+      lat: number;
+      lng: number;
+      description: string;
+      location?: string;
+    }[] = await res.json();
+
+    const written: SavedLocation[] = [];
+    for (const item of items.slice(0, 200)) {
+      try {
+        const saved = await db.createLocation({
+          name: item.name,
+          lat: item.lat,
+          lng: item.lng,
+          type: (item.type as SavedLocation["type"]) || "campsite",
+          description: item.description || item.location || "Free USFS campsite",
+          photo_data_url: "",
+          project_id: "",
+          day_id: "",
+        } as Partial<Omit<SavedLocation, "id" | "created_at">>);
         written.push(saved);
       } catch {
         // ignore duplicate id conflicts
@@ -45,98 +106,9 @@ async function loadStaticSeed(): Promise<SavedLocation[]> {
     }
     return written;
   } catch (err) {
-    console.warn('[CFA] Static seed load failed:', err);
+    console.warn("[CFA] Static seed load failed:", err);
     return [];
   }
-}
-
-// ─── OSM Overpass seeding ───────────────────────────────────────────────────────
-// Queries OpenStreetMap for real campsite and photo spot data across the lower-48.
-// Returns raw SavedLocation-shaped objects (no project_id/day_id yet — the db layer
-// can accept them as optional).
-async function seedOSMLocations(): Promise<SavedLocation[]> {
-  const results: SeedResult[] = [];
-
-  // US continental bounding box
-  const bbox = "-125,24,-66,50";
-
-  try {
-    const res = await fetch(`/api/osm?bbox=${bbox}`);
-
-    const json = await res.json();
-    const elements = json.elements ?? [];
-
-    for (const el of elements) {
-      const name: string = el.tags?.name ?? "";
-      if (!name) continue;
-
-      let lat: number, lng: number;
-      if (el.type === "node") {
-        lat = el.lat;
-        lng = el.lon;
-      } else if (el.type === "way" && el.center) {
-        lat = el.center.lat;
-        lng = el.center.lon;
-      } else {
-        continue;
-      }
-
-      const isPhotoSpot =
-        el.tags?.natural === "peak" ||
-        el.tags?.natural === "cliff" ||
-        el.tags?.natural === "viewpoint" ||
-        el.tags?.tourism === "viewpoint";
-
-      results.push({
-        id: `osm-${el.id}`,
-        name,
-        lat,
-        lng,
-        type: isPhotoSpot ? "photo_spot" : "campsite",
-        description:
-          el.tags?.description ??
-          el.tags?.["tourism:description"] ??
-          el.tags?.note ??
-          "",
-        source: `OSM: ${el.tags?.["source:location"] ?? "OpenStreetMap"}`,
-      });
-    }
-  } catch (err) {
-    console.warn("[CFA] OSM seed failed:", err);
-  }
-
-  // Deduplicate by name + rounded lat/lng (within ~100m)
-  const seen = new Set<string>();
-  const deduped = results.filter((r) => {
-    const key = `${r.name.toLowerCase()}@${r.lat.toFixed(2)},${r.lng.toFixed(2)}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  // Write each to IndexedDB
-  const written: SavedLocation[] = [];
-  for (const r of deduped.slice(0, 500)) {
-    try {
-      // project_id/day_id are required in the schema but we treat them as optional
-      // for seeded data — write with empty string and let the app fill them on use
-      const saved = await db.createLocation({
-        name: r.name,
-        lat: r.lat,
-        lng: r.lng,
-        type: r.type,
-        description: r.description || r.source,
-        photo_data_url: "",
-        project_id: "",
-        day_id: "",
-      } as Partial<Omit<SavedLocation, "id" | "created_at">>);
-      written.push(saved);
-    } catch {
-      // ignore duplicate id conflicts
-    }
-  }
-
-  return written;
 }
 
 interface LocationState {
@@ -165,14 +137,12 @@ export const useLocationStore = create<LocationState>((set, get) => ({
     set({ loading: true });
     let locations = await db.getAllLocations();
 
-    // First launch — seed from OpenStreetMap Overpass API
     if (locations.length === 0) {
-      const seeded = await seedOSMLocations();
+      // Seed from USFS ArcGIS API (primary), fallback to static seed
+      const seeded = await seedUSFSLocations();
       if (seeded.length > 0) {
         locations = seeded;
       } else {
-        // All Overpass endpoints failed — fall back to static seed
-        console.warn('[CFA] OSM seed returned no results, loading static seed');
         locations = await loadStaticSeed();
       }
     }

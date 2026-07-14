@@ -293,43 +293,36 @@ export default function MapPage() {
     try {
       const bounds = mapRef.current.getBounds();
       const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`;
-      const res = await fetch(`/api/osm?bbox=${bbox}`);
-      const data = await res.json();
-      const elements: Array<{
-        tags?: Record<string, string>;
-        lat?: number;
-        lon?: number;
-        center?: { lat: number; lon: number };
-      }> = data.elements || [];
+      const res = await fetch(`/api/campsites?bbox=${bbox}`);
+      const json = await res.json();
+      const rawLocations: Array<{
+        name: string;
+        lat: number;
+        lng: number;
+        type: SavedLocation["type"];
+        description: string;
+        location: string;
+        url: string;
+        directions: string;
+      }> = json.locations || [];
 
-      for (const el of elements) {
-        const tags = el.tags || {};
-        if (!tags.name) continue;
-
-        let lat: number, lng: number;
-        if (el.lat !== undefined) { lat = el.lat; lng = el.lon ?? 0; }
-        else if (el.center) { lat = el.center.lat; lng = el.center.lon; }
-        else continue;
+      for (const item of rawLocations) {
+        if (!item.name) continue;
 
         // Skip if already exists (same name + ~100m)
         const existing = locations.find((l) =>
-          l.name === tags.name &&
-          Math.abs((l.lat ?? 0) - lat) < 0.001 &&
-          Math.abs((l.lng ?? 0) - lng) < 0.001
+          l.name === item.name &&
+          Math.abs((l.lat ?? 0) - item.lat) < 0.001 &&
+          Math.abs((l.lng ?? 0) - item.lng) < 0.001
         );
         if (existing) continue;
 
-        // Determine type
-        let type: SavedLocation["type"] = "other";
-        if (tags.tourism === "camp_site" || tags.leisure === "campsite") type = "campsite";
-        else if (tags.tourism === "viewpoint" || tags.natural === "peak") type = "photo_spot";
-
         await createLocation({
-          name: tags.name,
-          type,
-          lat,
-          lng,
-          description: [tags.description, tags.note].filter(Boolean).join(" — ") || undefined,
+          name: item.name,
+          type: item.type,
+          lat: item.lat,
+          lng: item.lng,
+          description: item.description || item.location,
         });
       }
 
