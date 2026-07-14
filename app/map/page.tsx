@@ -65,6 +65,26 @@ export default function MapPage() {
   const [selectedLocation, setSelectedLocation] = useState<SavedLocation | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    if (!mapRef.current) return;
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`,
+        { headers: { Accept: "application/json" } }
+      );
+      const results = await res.json();
+      if (results && results.length > 0) {
+        const { lat, lon } = results[0];
+        const map = mapRef.current as { flyTo: (opts: object) => void };
+        map.flyTo({ center: [parseFloat(lon), parseFloat(lat)], zoom: 10, essential: true });
+        setSearchQuery("");
+      }
+    } catch {
+      // silent fail
+    }
+  };
+
   // Form
   const [formName, setFormName] = useState("");
   const [formType, setFormType] = useState<SavedLocation["type"]>("photo_spot");
@@ -406,22 +426,20 @@ export default function MapPage() {
         }}
       >
         <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "8px",
-            padding: "8px 12px",
-          }}
+          onClick={handleSearch}
+          style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "8px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "8px", padding: "8px 12px", flex: 1 }}
         >
           <Search size={14} style={{ color: "var(--text-secondary)", flexShrink: 0 }} />
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search locations..."
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSearch();
+              }
+            }}
+            placeholder="Search locations or places..."
             style={{
               flex: 1,
               background: "none",
@@ -513,7 +531,7 @@ export default function MapPage() {
         {FILTER_OPTIONS.map((opt) => (
           <button
             key={opt.value}
-            onClick={() => setFilter(opt.value)}
+            onClick={() => { console.log("Filter changed:", opt.value, "total locations:", locations.length); setFilter(opt.value); }}
             style={{
               background: filter === opt.value ? "rgba(0,210,255,0.15)" : "transparent",
               color: filter === opt.value ? "var(--accent)" : "var(--text-secondary)",

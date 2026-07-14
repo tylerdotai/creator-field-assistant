@@ -22,7 +22,10 @@ out skel qt;`;
   try {
     const response = await fetch('https://overpass-api.de/api/interpreter', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Referer': 'https://creator-field-assistant.vercel.app',
+      },
       body: `data=${encodeURIComponent(overpassQuery)}`,
       signal: AbortSignal.timeout(35000),
     });
