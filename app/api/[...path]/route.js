@@ -11,7 +11,7 @@ function getToken(request) {
   return null;
 }
 
-function proxy(request) {
+async function proxy(request) {
   const token = getToken(request);
   const url = new URL(request.url);
   const path = url.pathname.replace("/api/", "");
@@ -23,17 +23,41 @@ function proxy(request) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
+  // Clone request to read body — Next.js App Router consumes the stream
+  const cloned = request.clone();
+  let body;
+  try {
+    body = await cloned.text();
+  } catch {
+    body = "";
+  }
+
   const options = {
     method: request.method,
     headers,
+    ...(body && { body }),
   };
 
-  if (request.method !== "GET" && request.method !== "HEAD") {
-    options["body"] = request.body;
-  }
-
   const targetUrl = `${WORKER_URL}/${path}${url.search}`;
-  return fetch(targetUrl, options);
+
+  try {
+    const response = await fetch(targetUrl, options);
+    const data = await response.text();
+    return new Response(data, {
+      status: response.status,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      },
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ success: false, error: "Proxy error", details: String(err) }), {
+      status: 502,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
 
 export async function GET(request) {
